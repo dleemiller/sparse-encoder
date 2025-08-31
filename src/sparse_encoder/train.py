@@ -3,10 +3,13 @@ import os, random
 import numpy as np
 import torch
 from sentence_transformers import SparseEncoderTrainer, SparseEncoderTrainingArguments
-from sentence_transformers.sparse_encoder.evaluation import SparseInformationRetrievalEvaluator
+from sentence_transformers.sparse_encoder.evaluation import (
+    SparseInformationRetrievalEvaluator,
+)
 from .config import AppCfg
 from .model import build_model, build_loss
 from .data import load_train_dataset, load_eval_corpus
+
 
 def set_seed(seed: int):
     random.seed(seed)
@@ -14,6 +17,7 @@ def set_seed(seed: int):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
 
 def train(cfg: AppCfg):
     set_seed(cfg.seed)
@@ -74,4 +78,3 @@ def train(cfg: AppCfg):
     trainer.train()
     model.save_pretrained("./final")
     return model
-

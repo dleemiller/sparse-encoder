@@ -3,6 +3,7 @@ from sentence_transformers.sparse_encoder.models import MLMTransformer, SpladePo
 from sentence_transformers.sparse_encoder.losses import SparseMarginMSELoss, SpladeLoss
 from .config import ModelCfg, LossCfg
 
+
 def build_model(cfg: ModelCfg) -> SparseEncoder:
     return SparseEncoder(
         modules=[
@@ -16,6 +17,7 @@ def build_model(cfg: ModelCfg) -> SparseEncoder:
         ),
     )
 
+
 def build_loss(model: SparseEncoder, loss_cfg: LossCfg) -> SpladeLoss:
     return SpladeLoss(
         model=model,
@@ -23,4 +25,3 @@ def build_loss(model: SparseEncoder, loss_cfg: LossCfg) -> SpladeLoss:
         query_regularizer_weight=loss_cfg.query_regularizer_weight,
         document_regularizer_weight=loss_cfg.document_regularizer_weight,
     )
-

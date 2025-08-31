@@ -5,18 +5,25 @@ import numpy as np
 from typing import Dict, List, Tuple
 from .config import DataCfg
 
+
 def md5(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()
+
 
 def _validate_and_normalize_indices(idxs: List[int], max_count: int) -> List[int]:
     if not idxs:
         raise ValueError("data.negatives_indices must have at least 1 index (1..8).")
     if len(idxs) > max_count:
-        raise ValueError(f"data.negatives_indices has {len(idxs)} items but only {max_count} negatives exist.")
+        raise ValueError(
+            f"data.negatives_indices has {len(idxs)} items but only {max_count} negatives exist."
+        )
     for i in idxs:
         if not (0 <= i < max_count):
-            raise ValueError(f"Index {i} is out of bounds for {max_count} negatives (valid: 0..{max_count-1}).")
+            raise ValueError(
+                f"Index {i} is out of bounds for {max_count} negatives (valid: 0..{max_count - 1})."
+            )
     return list(idxs)
+
 
 def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | None]:
     """
@@ -33,7 +40,9 @@ def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | 
         if "negatives" in row and isinstance(row["negatives"], list):
             neg_texts = row["negatives"][:8]
         else:
-            raise KeyError("Could not find 8 negative texts (negative_1..negative_8 or a 'negatives' list).")
+            raise KeyError(
+                "Could not find 8 negative texts (negative_1..negative_8 or a 'negatives' list)."
+            )
 
     # 2) teacher scores
     pos_score = None
@@ -47,7 +56,9 @@ def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | 
                 break
 
     if scores is None:
-        raise KeyError("Could not find teacher scores in row (expected one of: label, scores, neg_scores).")
+        raise KeyError(
+            "Could not find teacher scores in row (expected one of: label, scores, neg_scores)."
+        )
 
     # Heuristics:
     # - If length == 8: assume these are the 8 negative scores (most common)
@@ -60,12 +71,15 @@ def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | 
         pos_score = scores[0]
         neg_scores = scores[1:9]
     else:
-        raise ValueError(f"Unexpected teacher score length: {len(scores)} (expected 8 or >=9).")
+        raise ValueError(
+            f"Unexpected teacher score length: {len(scores)} (expected 8 or >=9)."
+        )
 
     if len(neg_scores) != 8:
         raise ValueError("After normalization, neg_scores must have length 8.")
 
     return neg_texts, neg_scores, pos_score
+
 
 def load_train_dataset(cfg: DataCfg) -> Dataset:
     ds = load_dataset(cfg.train_name, split=cfg.train_split)
@@ -90,7 +104,9 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
         example = {
             "query_id": row.get("query_id"),
             "query": row["query"],
-            "positive": row["positive"] if "positive" in row else row.get("positives", [""])[0],
+            "positive": row["positive"]
+            if "positive" in row
+            else row.get("positives", [""])[0],
             "label": selected_scores,  # length K — matches number of negative_* columns
         }
         for j, text in enumerate(selected_negs, start=1):
@@ -100,7 +116,10 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
 
     return Dataset.from_list(rows)
 
-def load_eval_corpus(cfg: DataCfg) -> Tuple[Dict[int, str], Dict[str, str], Dict[int, List[str]]]:
+
+def load_eval_corpus(
+    cfg: DataCfg,
+) -> Tuple[Dict[int, str], Dict[str, str], Dict[int, List[str]]]:
     eval_ds = load_dataset(cfg.eval_name, split=cfg.eval_split)
     if cfg.eval_select_rows is not None:
         eval_ds = eval_ds.select(range(cfg.eval_select_rows))
@@ -117,8 +136,7 @@ def load_eval_corpus(cfg: DataCfg) -> Tuple[Dict[int, str], Dict[str, str], Dict
     relevant = dict(
         zip(
             eval_ds["query_id"],
-            [[md5(pos) for pos in positives] for positives in eval_ds["positives"]]
+            [[md5(pos) for pos in positives] for positives in eval_ds["positives"]],
         )
     )
     return queries, corpus, relevant
-

@@ -3,6 +3,7 @@ from typing import List, Optional
 import yaml
 from pathlib import Path
 
+
 @dataclass
 class ModelCfg:
     backbone_id: str
@@ -10,6 +11,7 @@ class ModelCfg:
     model_name: str = "SPLADE"
     language: str = "en"
     license: str = "mit"
+
 
 @dataclass
 class DataCfg:
@@ -22,6 +24,7 @@ class DataCfg:
     # NEW: any length 1..8, values in 0..7 (after sorting by teacher score)
     negatives_indices: List[int] = field(default_factory=lambda: [0, 1, 4, 7])
     label_min: float = 1.0
+
 
 @dataclass
 class TrainCfg:
@@ -43,10 +46,12 @@ class TrainCfg:
     load_best_model_at_end: bool = True
     metric_for_best_model: str = "dot_mrr@10"
 
+
 @dataclass
 class LossCfg:
     query_regularizer_weight: float = 0.5
     document_regularizer_weight: float = 0.3
+
 
 @dataclass
 class HubCfg:
@@ -54,14 +59,16 @@ class HubCfg:
     repo_id: Optional[str] = None
     private: bool = True
 
+
 @dataclass
 class AppCfg:
     seed: int = 42
     model: ModelCfg = None  # type: ignore
-    data: DataCfg = None    # type: ignore
+    data: DataCfg = None  # type: ignore
     train: TrainCfg = None  # type: ignore
-    loss: LossCfg = None    # type: ignore
-    hub: HubCfg = None      # type: ignore
+    loss: LossCfg = None  # type: ignore
+    hub: HubCfg = None  # type: ignore
+
 
 def load_config(path: str | Path) -> AppCfg:
     with open(path, "r") as f:
@@ -75,4 +82,3 @@ def load_config(path: str | Path) -> AppCfg:
         loss=LossCfg(**raw["loss"]),
         hub=HubCfg(**raw.get("hub", {})),
     )
-

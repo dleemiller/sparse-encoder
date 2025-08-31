@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "datasets>=4.0.0",
+    "ipython>=9.5.0",
     "numpy>=2.3.2",
     "pyyaml>=6.0.2",
     "sentence-transformers>=5.1.0",
@@ -14,4 +15,10 @@ dependencies = [
 
 [project.scripts]
 train = "main:main"
+dataset = "sparse_encoder.scripts.make_distillation_dataset:main"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.11",
+]
 
