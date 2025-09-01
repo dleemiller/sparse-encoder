@@ -1,0 +1,63 @@
+seed: 42
+
+# Hugging Face model + pooling
+model:
+  backbone_id: "jhu-clsp/ettin-encoder-32m"
+  pooling_strategy: "max"
+  model_name: "splade-msmarco-ettin-xs"
+  language: "en"
+  license: "mit"
+
+# Dataset sources (Hugging Face hub)
+data:
+  train_name: ""
+  train_split: "train"
+  eval_name: "rasyosef/msmarco"
+  eval_split: "dev"
+  train_select_rows: 250000
+  eval_select_rows: 5000
+
+  # Which negatives to keep after sorting by label (lowest→highest)
+  negatives_pick_indices: [0, 1, 2, 3, 4, 5, 6, 7]
+  label_min: 1.0
+
+# Training
+train:
+  run_name: "SPLADE-BERT-Mini-distil"
+  output_dir: "models/SPLADE-BERT-Mini-distil"
+
+  num_train_epochs: 6
+  per_device_train_batch_size: 48
+  per_device_eval_batch_size: 48
+  learning_rate: 8.0e-5
+  warmup_ratio: 0.025
+  lr_scheduler_type: "cosine"
+  optim: "adamw_torch_fused"
+  fp16: true
+  bf16: false
+  eval_strategy: "epoch"
+  save_strategy: "epoch"
+  logging_strategy: "epoch"
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: "dot_mrr@10"
+
+# SPLADE loss regularizers
+loss:
+  query_regularizer_weight: 5.0e-1
+  document_regularizer_weight: 3.0e-1
+    ## Original SPLADE regularization weights  
+    #query_regularizer_weight: 5.0e-5
+    #document_regularizer_weight: 3.0e-5
+    #
+    ## SPLADE v3 combined loss weights
+    #margin_weight: 0.05
+    #kl_weight: 1.0
+    #kl_temperature: 2.0
+
+# Hub push (optional)
+hub:
+  push_to_hub: false
+  repo_id: null
+  private: true
+
