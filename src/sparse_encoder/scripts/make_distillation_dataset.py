@@ -166,7 +166,7 @@ def main():
         raise RuntimeError(f"Dataset missing expected columns: {missing}")
 
     # Load CE teacher with NO extra truncation beyond the model's own max context.
-    ce = CrossEncoder(args.teacher, device="cuda")  # no manual max_length clamp
+    ce = CrossEncoder(args.teacher, activation_fn=torch.nn.Identity(), device="cuda")  # no manual max_length clamp
     # Align to model's native max context length so we don't add our own shorter cap.
     model_max = getattr(ce.model.config, "max_position_embeddings", None)
     if model_max is None or (isinstance(model_max, int) and model_max <= 0):
