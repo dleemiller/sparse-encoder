@@ -1,0 +1,31 @@
+ci:
+  autofix_prs: true
+  autoupdate_schedule: quarterly
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+
+  # Run tests with coverage (local hook)
+  # - repo: local
+  #   hooks:
+  #     - id: pytest-with-coverage
+  #       name: pytest with coverage
+  #       entry: uv run pytest
+  #       language: system
+  #       pass_filenames: false
+  #       types: [python]
+  #       stages: [pre-commit]

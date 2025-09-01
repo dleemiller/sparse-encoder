@@ -10,7 +10,7 @@ model:
 
 # Dataset sources (Hugging Face hub)
 data:
-  train_name: ""
+  train_name: "dleemiller/msmarco-bm25-rrf-scored"
   train_split: "train"
   eval_name: "rasyosef/msmarco"
   eval_split: "dev"
@@ -27,14 +27,14 @@ train:
   output_dir: "models/SPLADE-BERT-Mini-distil"
 
   num_train_epochs: 6
-  per_device_train_batch_size: 48
-  per_device_eval_batch_size: 48
-  learning_rate: 8.0e-5
+  per_device_train_batch_size: 24
+  per_device_eval_batch_size: 24
+  learning_rate: 4.0e-5
   warmup_ratio: 0.025
   lr_scheduler_type: "cosine"
   optim: "adamw_torch_fused"
-  fp16: true
-  bf16: false
+  fp16: false
+  bf16: true
   eval_strategy: "epoch"
   save_strategy: "epoch"
   logging_strategy: "epoch"
@@ -44,20 +44,19 @@ train:
 
 # SPLADE loss regularizers
 loss:
-  query_regularizer_weight: 5.0e-1
-  document_regularizer_weight: 3.0e-1
-    ## Original SPLADE regularization weights  
-    #query_regularizer_weight: 5.0e-5
-    #document_regularizer_weight: 3.0e-5
-    #
-    ## SPLADE v3 combined loss weights
-    #margin_weight: 0.05
-    #kl_weight: 1.0
-    #kl_temperature: 2.0
+  #query_regularizer_weight: 5.0e-1
+  #document_regularizer_weight: 3.0e-1
+  # Original SPLADE regularization weights
+  query_regularizer_weight: 5.0e-5
+  document_regularizer_weight: 3.0e-5
+
+  # SPLADE v3 combined loss weights
+  margin_weight: 0.05
+  kl_weight: 1.0
+  kl_temperature: 2.0
 
 # Hub push (optional)
 hub:
   push_to_hub: false
   repo_id: null
   private: true
-

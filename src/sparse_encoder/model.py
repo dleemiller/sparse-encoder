@@ -1,12 +1,13 @@
 import torch
 from sentence_transformers import SparseEncoder, SparseEncoderModelCardData
-from sentence_transformers.sparse_encoder.models import MLMTransformer, SpladePooling
 from sentence_transformers.sparse_encoder.losses import (
-    SparseMarginMSELoss,
     SparseDistillKLDivLoss,
+    SparseMarginMSELoss,
     SpladeLoss,
 )
-from .config import ModelCfg, LossCfg
+from sentence_transformers.sparse_encoder.models import MLMTransformer, SpladePooling
+
+from .config import LossCfg, ModelCfg
 
 
 def build_model(cfg: ModelCfg) -> SparseEncoder:
@@ -28,7 +29,7 @@ class SPLADEv3CombinedLoss(torch.nn.Module):
     """
     Combined loss for SPLADE v3 that mixes MarginMSE and KL-Divergence losses.
 
-    From SPLADE v3:
+    From SPLADE v3 paper Section 2.3:
     - λ_KL = 1.0 for KL-Div (focuses on Precision)
     - λ_MSE = 0.05 for MarginMSE (focuses on Recall)
     """
@@ -47,6 +48,34 @@ class SPLADEv3CombinedLoss(torch.nn.Module):
         self.margin_weight = margin_weight
         self.kl_weight = kl_weight
 
+    def compute_loss_from_embeddings(self, embeddings, labels=None):
+        """
+        Required method for SpladeLoss compatibility.
+
+        Args:
+            embeddings: List of sparse embeddings tensors
+            labels: Labels for computing the loss
+        """
+        total_loss = 0.0
+
+        # Apply MarginMSE loss if margin labels are provided
+        if isinstance(labels, dict) and "margin" in labels:
+            margin_loss_val = self.margin_loss.compute_loss_from_embeddings(
+                embeddings, labels["margin"]
+            )
+            total_loss += self.margin_weight * margin_loss_val
+        elif not isinstance(labels, dict):
+            # Fallback: assume labels are for margin loss
+            margin_loss_val = self.margin_loss.compute_loss_from_embeddings(embeddings, labels)
+            total_loss += self.margin_weight * margin_loss_val
+
+        # Apply KL divergence loss if KL labels are provided
+        if isinstance(labels, dict) and "kl" in labels:
+            kl_loss_val = self.kl_loss.compute_loss_from_embeddings(embeddings, labels["kl"])
+            total_loss += self.kl_weight * kl_loss_val
+
+        return total_loss
+
     def forward(self, sentence_features, labels):
         """
         Forward pass combining both losses.
@@ -59,15 +88,16 @@ class SPLADEv3CombinedLoss(torch.nn.Module):
         """
         total_loss = 0.0
 
-        # MarginMSE loss
+        # Apply MarginMSE loss if margin labels are provided
         if isinstance(labels, dict) and "margin" in labels:
             margin_loss_val = self.margin_loss(sentence_features, labels["margin"])
             total_loss += self.margin_weight * margin_loss_val
         elif not isinstance(labels, dict):
+            # Fallback: assume labels are for margin loss
             margin_loss_val = self.margin_loss(sentence_features, labels)
             total_loss += self.margin_weight * margin_loss_val
 
-        # KL divergence loss
+        # Apply KL divergence loss if KL labels are provided
         if isinstance(labels, dict) and "kl" in labels:
             kl_loss_val = self.kl_loss(sentence_features, labels["kl"])
             total_loss += self.kl_weight * kl_loss_val
@@ -79,7 +109,7 @@ def build_loss(model: SparseEncoder, loss_cfg: LossCfg) -> SpladeLoss:
     """
     Build SPLADE v3 loss function with combined MarginMSE + KL-Div loss.
 
-    Uses exact weights from SPLADE v3:
+    Uses exact weights from SPLADE v3 paper Section 2.3:
     - λ_KL = 1.0 for KL-Div (focuses on Precision)
     - λ_MSE = 0.05 for MarginMSE (focuses on Recall)
     """

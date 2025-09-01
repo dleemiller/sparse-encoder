@@ -1,14 +1,18 @@
 from __future__ import annotations
-import os, random
+
+import os
+import random
+
 import numpy as np
 import torch
 from sentence_transformers import SparseEncoderTrainer, SparseEncoderTrainingArguments
 from sentence_transformers.sparse_encoder.evaluation import (
     SparseInformationRetrievalEvaluator,
 )
+
 from .config import AppCfg
-from .model import build_model, build_loss
-from .data import load_train_dataset, load_eval_corpus
+from .data import load_eval_corpus, load_train_dataset
+from .model import build_loss, build_model
 
 
 def set_seed(seed: int):
@@ -63,7 +67,7 @@ def train(cfg: AppCfg):
     )
 
     # Build dynamic column list based on how many negative_* were emitted
-    k = len(cfg.data.negatives_indices)
+    k = len(cfg.data.negatives_pick_indices)
     neg_cols = [f"negative_{i}" for i in range(1, k + 1)]
     cols = ["query", "positive"] + neg_cols + ["label"]
 

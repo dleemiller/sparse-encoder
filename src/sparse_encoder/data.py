@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import hashlib
-from datasets import load_dataset, Dataset
+
 import numpy as np
-from typing import Dict, List, Tuple
+from datasets import Dataset, load_dataset
+
 from .config import DataCfg
 
 
@@ -10,7 +12,7 @@ def md5(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()
 
 
-def _validate_and_normalize_indices(idxs: List[int], max_count: int) -> List[int]:
+def _validate_and_normalize_indices(idxs: list[int], max_count: int) -> list[int]:
     if not idxs:
         raise ValueError("data.negatives_indices must have at least 1 index (1..8).")
     if len(idxs) > max_count:
@@ -51,7 +53,7 @@ def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | 
     for field in ("label", "scores", "neg_scores"):
         if field in row:
             val = row[field]
-            if isinstance(val, (list, tuple, np.ndarray)):
+            if isinstance(val, list | tuple | np.ndarray):
                 scores = list(map(float, val))
                 break
 
@@ -71,9 +73,7 @@ def _extract_negatives_and_scores(row) -> tuple[list[str], list[float], float | 
         pos_score = scores[0]
         neg_scores = scores[1:9]
     else:
-        raise ValueError(
-            f"Unexpected teacher score length: {len(scores)} (expected 8 or >=9)."
-        )
+        raise ValueError(f"Unexpected teacher score length: {len(scores)} (expected 8 or >=9).")
 
     if len(neg_scores) != 8:
         raise ValueError("After normalization, neg_scores must have length 8.")
@@ -91,12 +91,12 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
         neg_texts, neg_scores, _pos_score = _extract_negatives_and_scores(row)
 
         # Sort negatives by teacher score (ascending: easier→harder; reverse if you prefer hardest-first)
-        pairs = sorted(zip(neg_texts, neg_scores), key=lambda x: x[1])
+        pairs = sorted(zip(neg_texts, neg_scores, strict=False), key=lambda x: x[1])
         neg_sorted = [p[0] for p in pairs]
         score_sorted = [max(float(p[1]), float(cfg.label_min)) for p in pairs]
 
         # Validate indices and select K
-        idxs = _validate_and_normalize_indices(cfg.negatives_indices, max_count=8)
+        idxs = _validate_and_normalize_indices(cfg.negatives_pick_indices, max_count=8)
         selected_negs = [neg_sorted[i] for i in idxs]
         selected_scores = [score_sorted[i] for i in idxs]
 
@@ -104,9 +104,7 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
         example = {
             "query_id": row.get("query_id"),
             "query": row["query"],
-            "positive": row["positive"]
-            if "positive" in row
-            else row.get("positives", [""])[0],
+            "positive": row["positive"] if "positive" in row else row.get("positives", [""])[0],
             "label": selected_scores,  # length K — matches number of negative_* columns
         }
         for j, text in enumerate(selected_negs, start=1):
@@ -119,14 +117,14 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
 
 def load_eval_corpus(
     cfg: DataCfg,
-) -> Tuple[Dict[int, str], Dict[str, str], Dict[int, List[str]]]:
+) -> tuple[dict[int, str], dict[str, str], dict[int, list[str]]]:
     eval_ds = load_dataset(cfg.eval_name, split=cfg.eval_split)
     if cfg.eval_select_rows is not None:
         eval_ds = eval_ds.select(range(cfg.eval_select_rows))
 
-    queries = dict(zip(eval_ds["query_id"], eval_ds["query"]))
+    queries = dict(zip(eval_ds["query_id"], eval_ds["query"], strict=False))
 
-    corpus: Dict[str, str] = {}
+    corpus: dict[str, str] = {}
     for row in eval_ds:
         for pos in row["positives"]:
             corpus[md5(pos)] = pos
@@ -137,6 +135,7 @@ def load_eval_corpus(
         zip(
             eval_ds["query_id"],
             [[md5(pos) for pos in positives] for positives in eval_ds["positives"]],
+            strict=False,
         )
     )
     return queries, corpus, relevant

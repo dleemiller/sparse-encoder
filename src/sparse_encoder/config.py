@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 @dataclass
@@ -19,10 +19,9 @@ class DataCfg:
     train_split: str = "train"
     eval_name: str = ""
     eval_split: str = "dev"
-    train_select_rows: Optional[int] = None
-    eval_select_rows: Optional[int] = None
-    # NEW: any length 1..8, values in 0..7 (after sorting by teacher score)
-    negatives_indices: List[int] = field(default_factory=lambda: [0, 1, 4, 7])
+    train_select_rows: int | None = None
+    eval_select_rows: int | None = None
+    negatives_pick_indices: list[int] = field(default_factory=lambda: [0, 1, 4, 7])
     label_min: float = 1.0
 
 
@@ -59,7 +58,7 @@ class LossCfg:
 @dataclass
 class HubCfg:
     push_to_hub: bool = False
-    repo_id: Optional[str] = None
+    repo_id: str | None = None
     private: bool = True
 
 
@@ -74,7 +73,7 @@ class AppCfg:
 
 
 def load_config(path: str | Path) -> AppCfg:
-    with open(path, "r") as f:
+    with open(path) as f:
         raw = yaml.safe_load(f)
 
     return AppCfg(

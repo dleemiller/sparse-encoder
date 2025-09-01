@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "sparse-encoder"
 version = "0.1.0"
@@ -5,12 +9,14 @@ description = "Sparse encoder training script"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "accelerate>=1.10.1",
     "datasets>=4.0.0",
     "ipython>=9.5.0",
     "numpy>=2.3.2",
     "pyyaml>=6.0.2",
     "sentence-transformers>=5.1.0",
     "torch>=2.8.0",
+    "transformers>=4.56.0",
 ]
 
 [project.scripts]
@@ -19,6 +25,43 @@ dataset = "sparse_encoder.scripts.make_distillation_dataset:main"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.12.11",
+    "pre-commit>=4.3.0",
+    "pytest>=8.4.1",
+    "ruff>=0.12.9",
 ]
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 104
+extend-exclude = []
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "I", "N", "SIM", "C4", "ARG"]
+
+ignore = [
+  "ARG001",
+  "E203",
+  "E266",
+  "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"src/**/__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dspy_data"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
