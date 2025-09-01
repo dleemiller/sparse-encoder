@@ -79,21 +79,13 @@ def make_row_out(
         row[f"negative_{int(doc_id.split('-')[1])}"] for doc_id in fused_sorted
     ]
     neg_logits_rrf = [ce_map[doc_id] for doc_id in fused_sorted]
-
-    return {
+    out = {
         "query": row["query"],
         "positive": row["positive"],
-        "negatives": neg_texts,
-        "scores_raw": [float(pos_logit)] + neg_logits_rrf,  # logits only
-        "scores_meta": {
-            "ce_model": teacher_id,
-            "scores_format": "scores_raw[0] = positive logit, then negatives in RRF order",
-            "rrf_k": rrf_k,
-            "source_dataset": "sentence-transformers/msmarco-bm25:triplet-50",
-            "value_type": "logit",
-        },
-        "negatives_ce_logits_rrf": neg_logits_rrf,
+        "scores": [float(pos_logit)] + neg_logits_rrf,
     }
+    out.update({f"negative_{i}": x for i, x in enumerate(neg_texts)})
+    return out
 
 
 def write_parquet_shards(
@@ -139,7 +131,7 @@ def main():
     )
     ap.add_argument("--rrf_k", type=int, default=60)
     ap.add_argument(
-        "--topk_negatives", type=int, default=8, help="0 or <0 keeps all 50 after RRF"
+        "--topk_negatives", type=int, default=-1, help="0 or <0 keeps all 50 after RRF"
     )
     ap.add_argument("--limit", type=int, default=0, help="0 = all rows")
     ap.add_argument("--output_dir", default="out/msmarco-triplet50-modernbert-parquet")
@@ -166,17 +158,7 @@ def main():
         raise RuntimeError(f"Dataset missing expected columns: {missing}")
 
     # Load CE teacher with NO extra truncation beyond the model's own max context.
-    ce = CrossEncoder(args.teacher, activation_fn=torch.nn.Identity(), device="cuda")  # no manual max_length clamp
-    # Align to model's native max context length so we don't add our own shorter cap.
-    model_max = getattr(ce.model.config, "max_position_embeddings", None)
-    if model_max is None or (isinstance(model_max, int) and model_max <= 0):
-        model_max = ce.tokenizer.model_max_length  # last resort from tokenizer
-    # CrossEncoder stores this on `self.max_length`; update it post-init.
-    if isinstance(model_max, int) and model_max > 0:
-        ce.max_length = int(model_max)
-        ce.tokenizer.model_max_length = int(model_max)
-
-    # Use FP16 inference; if you prefer BF16, switch dtype in autocast below.
+    ce = CrossEncoder(args.teacher, activation_fn=torch.nn.Identity(), device="cuda")
     ce.model.half()
 
     total_rows = len(ds)
@@ -197,14 +179,13 @@ def main():
             )
 
             # 2) Single predict call that covers the ENTIRE row-batch (no partials)
-            #    If this OOMs, lower --row_batch_size (by design, no try/except).
             with (
                 torch.inference_mode(),
                 torch.amp.autocast("cuda", dtype=torch.float16),
             ):
                 logits = ce.predict(
                     pairs,
-                    batch_size=len(pairs),  # EXACTLY one internal batch = one row-batch
+                    batch_size=len(pairs),
                     convert_to_numpy=True,
                     show_progress_bar=False,
                 ).astype(np.float32, copy=False)

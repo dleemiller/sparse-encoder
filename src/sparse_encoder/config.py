@@ -49,8 +49,11 @@ class TrainCfg:
 
 @dataclass
 class LossCfg:
-    query_regularizer_weight: float = 0.5
-    document_regularizer_weight: float = 0.3
+    query_regularizer_weight: float = 5e-5
+    document_regularizer_weight: float = 3e-5
+    margin_weight: float = 0.05  # λ_MSE (focuses on Recall)
+    kl_weight: float = 1.0  # λ_KL (focuses on Precision)
+    kl_temperature: float = 2.0
 
 
 @dataclass
