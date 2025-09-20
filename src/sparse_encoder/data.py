@@ -48,14 +48,17 @@ def add_kl_labels(dataset: Dataset) -> Dataset:
         emb_positives = teacher_model.encode(batch["positive"])
 
         # Handle multiple negatives - collect first negative for each example
-        emb_negatives = teacher_model.encode(batch["negative_1"])
 
         # Compute raw similarity scores (not margins!)
         pos_scores = teacher_model.similarity_pairwise(emb_queries, emb_positives)
-        neg_scores = teacher_model.similarity_pairwise(emb_queries, emb_negatives)
+
+        all_scores = [pos_scores]
+        for i in range(1, 9):
+            emb_negatives = teacher_model.encode(batch[f"negative_{i}"])
+            all_scores.append(teacher_model.similarity_pairwise(emb_queries, emb_negatives))
 
         # Stack scores as [pos_scores, neg_scores] for KL loss
-        kl_labels = torch.stack([pos_scores, neg_scores], dim=1)
+        kl_labels = torch.stack(all_scores, dim=1)
 
         return {"kl_label": kl_labels}
 
@@ -66,6 +69,9 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
     ds = load_dataset(cfg.train_name, split=cfg.train_split)
     if cfg.train_select_rows is not None:
         ds = ds.shuffle(seed=42).select(range(cfg.train_select_rows))
+
+    # Always add KL labels using the global teacher model
+    ds = add_kl_labels(ds)
 
     rows = []
     for row in ds:
@@ -83,7 +89,7 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
             # "query_id": row.get("query_id"),
             "query": row["query"],
             "positive": row["positive"],
-            "label": margin_labels,  # Margins for MarginMSE loss
+            "label": margin_labels + row["kl_label"],  # Margins for MarginMSE loss
         }
         for j, text in enumerate(selected_negs, start=1):
             example[f"negative_{j}"] = text
@@ -92,8 +98,6 @@ def load_train_dataset(cfg: DataCfg) -> Dataset:
 
     dataset = Dataset.from_list(rows)
 
-    # Always add KL labels using the global teacher model
-    dataset = add_kl_labels(dataset)
     print(dataset[0])
 
     return dataset
